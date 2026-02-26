@@ -1,0 +1,37 @@
+# Kyber Command - Cursor Rules
+
+## 1. The Source of Truth
+- **Always** reference `TECH_SPEC.md` for the project's vision and constraints.
+- **Always** reference and update `PLAN.md` before writing code for a new feature.
+- If a conflict exists between the user's prompt and `TECH_SPEC.md`, ask for clarification.
+
+## 2. Coding Principles
+- **Skinny Prompts, Fat Specs**: High-level intent from user; implementation from spec context.
+- **Material Disengagement**: Code must be correct-by-vibe—functional, best-practice, spec-compliant.
+- **Atomic Commits**: Suggest a logical git commit message after completing significant PLAN steps.
+
+## 3. Python Stack Standards
+- **Linting:** ruff (or flake8/black if configured). Max line length 100.
+- **Testing:** pytest. Place tests in `tests/` mirroring `agents/`, `graph_engine.py`, etc.
+- **Type hints:** Use typing for public functions and state; TypedDict for graph state.
+- **Config:** YAML via `config.yaml`; no hardcoded prompts or URLs in agent code.
+
+## 4. Kyber-Specific Conventions
+- Agent modules: `agents/supervisor.py`, `agents/researcher.py`, `agents/coder.py`, `agents/state.py`.
+- HITL: Coder's `write_file` must call `interrupt()`; resume value contains `decision`, `path`, `content`.
+- Graph: `graph_engine.py` builds the LangGraph; `app.py` wires Chainlit + HITL callbacks.
+- Observability: `observability.py` initializes Phoenix; call `init_phoenix()` before graph/LLM use.
+
+## 5. Error Handling (The YOLO Loop)
+- On raw error paste: analyze, fix, update `PLAN.md` if architectural.
+- No apologies.
+
+## 6. Response Style
+- Be concise. Focus on doing over explaining.
+- When starting a task: "Updating PLAN.md... Executing Step X."
+
+## 7. Testing & Verification Protocol
+- **Test-Driven Intent**: New functions or logic changes require corresponding tests in `tests/`.
+- **Verify Step**: After writing code, suggest terminal command to run tests (e.g. `pytest tests/`).
+- **YOLO Mode**: With permission, run tests, read errors, fix iteratively until pass.
+- **No Manual Testing**: Avoid "try it out" unless UI/hardware-dependent.
