@@ -1,11 +1,11 @@
-"""Kyber Command - LangGraph orchestration engine with SqliteSaver."""
+"""Kyber Command - LangGraph orchestration engine with MemorySaver."""
 
-import sqlite3
+import asyncio
 from pathlib import Path
 
 import yaml
 from langchain_core.messages import AIMessage, BaseMessage, HumanMessage
-from langgraph.checkpoint.sqlite import SqliteSaver
+from langgraph.checkpoint.memory import MemorySaver
 from langgraph.graph import END, START, StateGraph
 from langgraph.prebuilt import ToolNode
 
@@ -108,11 +108,9 @@ def build_graph(config: dict | None = None):
     builder.add_edge("researcher", END)
     builder.add_edge("coder", END)
 
-    # Persistence: SqliteSaver -> state.db (connection stays open for app lifetime)
-    sqlite_path = persistence.get("sqlite_path", "state.db")
-    conn = sqlite3.connect(sqlite_path, check_same_thread=False)
-    checkpointer = SqliteSaver(conn)
-
+    # Persistence: MemorySaver (in-memory for now, can switch to AsyncSqliteSaver later)
+    checkpointer = MemorySaver()
+    
     graph = builder.compile(checkpointer=checkpointer)
     return graph
 
