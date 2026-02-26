@@ -1,11 +1,11 @@
-"""Kyber Command - LangGraph orchestration engine with AsyncSqliteSaver."""
+"""Kyber Command - LangGraph orchestration engine with MemorySaver."""
 
 import asyncio
 from pathlib import Path
 
 import yaml
 from langchain_core.messages import AIMessage, BaseMessage, HumanMessage
-from langgraph.checkpoint.sqlite.aio import AsyncSqliteSaver
+from langgraph.checkpoint.memory import MemorySaver
 from langgraph.graph import END, START, StateGraph
 from langgraph.prebuilt import ToolNode
 
@@ -13,10 +13,6 @@ from agents.coder import CODER_TOOLS, create_coder_llm, create_coder_node
 from agents.researcher import create_researcher_llm, researcher_node
 from agents.state import KyberState, ROUTER_CODER, ROUTER_RESEARCHER
 from agents.supervisor import create_supervisor_llm, supervisor_node
-
-# Global checkpointer context manager to keep connection alive
-_checkpointer_cm = None
-_checkpointer = None
 
 
 def load_config(config_path: str = "config.yaml") -> dict:
@@ -43,7 +39,7 @@ def _should_continue_coder(state: KyberState) -> str:
     return END
 
 
-async def build_graph(config: dict | None = None):
+def build_graph(config: dict | None = None):
     """Build and compile the Kyber Command LangGraph."""
     config = config or load_config()
 
@@ -112,18 +108,13 @@ async def build_graph(config: dict | None = None):
     builder.add_edge("researcher", END)
     builder.add_edge("coder", END)
 
-    # Persistence: AsyncSqliteSaver -> state.db
-    global _checkpointer_cm, _checkpointer
+    # Persistence: MemorySaver (in-memory for now, can switch to AsyncSqliteSaver later)
+    checkpointer = MemorySaver()
     
-    if _checkpointer is None:
-        sqlite_path = persistence.get("sqlite_path", "state.db")
-        _checkpointer_cm = AsyncSqliteSaver.from_conn_string(sqlite_path)
-        _checkpointer = await _checkpointer_cm.__aenter__()
-    
-    graph = builder.compile(checkpointer=_checkpointer)
+    graph = builder.compile(checkpointer=checkpointer)
     return graph
 
 
-async def get_graph():
+def get_graph():
     """Get the compiled graph (singleton-style for app)."""
-    return await build_graph()
+    return build_graph()

@@ -1,6 +1,5 @@
 """Kyber Command - Chainlit entry point with HITL approval UI."""
 
-import asyncio
 import uuid
 
 import chainlit as cl
@@ -15,15 +14,7 @@ init_phoenix()
 
 # Build graph once at module load
 _config = load_config()
-_graph = None
-
-
-async def _get_graph():
-    """Lazy initialization of graph."""
-    global _graph
-    if _graph is None:
-        _graph = await build_graph(_config)
-    return _graph
+_graph = build_graph(_config)
 
 
 def _get_thread_id() -> str:
@@ -70,10 +61,9 @@ async def on_message(message: cl.Message):
     await msg.send()
 
     try:
-        graph = await _get_graph()
         # Use astream to get messages + updates (for interrupt detection)
         interrupt_payload = None
-        async for event in graph.astream(
+        async for event in _graph.astream(
             {"messages": [HumanMessage(content=user_content)]},
             stream_mode=["messages", "updates"],
             config=config,
@@ -191,8 +181,7 @@ async def _resume_with_decision(decision: str):
     config = {"configurable": {"thread_id": thread_id}}
 
     try:
-        graph = await _get_graph()
-        result = await graph.ainvoke(
+        result = await _graph.ainvoke(
             Command(resume=resume_value),
             config=config,
         )
