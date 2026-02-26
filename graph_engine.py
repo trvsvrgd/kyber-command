@@ -14,6 +14,10 @@ from agents.researcher import create_researcher_llm, researcher_node
 from agents.state import KyberState, ROUTER_CODER, ROUTER_RESEARCHER
 from agents.supervisor import create_supervisor_llm, supervisor_node
 
+# Global checkpointer context manager to keep connection alive
+_checkpointer_cm = None
+_checkpointer = None
+
 
 def load_config(config_path: str = "config.yaml") -> dict:
     """Load configuration from YAML."""
@@ -109,12 +113,14 @@ async def build_graph(config: dict | None = None):
     builder.add_edge("coder", END)
 
     # Persistence: AsyncSqliteSaver -> state.db
-    sqlite_path = persistence.get("sqlite_path", "state.db")
-    # Create checkpointer - it will be initialized when first used
-    checkpointer_cm = AsyncSqliteSaver.from_conn_string(sqlite_path)
-    checkpointer = await checkpointer_cm.__aenter__()
+    global _checkpointer_cm, _checkpointer
     
-    graph = builder.compile(checkpointer=checkpointer)
+    if _checkpointer is None:
+        sqlite_path = persistence.get("sqlite_path", "state.db")
+        _checkpointer_cm = AsyncSqliteSaver.from_conn_string(sqlite_path)
+        _checkpointer = await _checkpointer_cm.__aenter__()
+    
+    graph = builder.compile(checkpointer=_checkpointer)
     return graph
 
 
