@@ -1,11 +1,11 @@
-"""Kyber Command - LangGraph orchestration engine with SqliteSaver."""
+"""Kyber Command - LangGraph orchestration engine with AsyncSqliteSaver."""
 
-import sqlite3
+import asyncio
 from pathlib import Path
 
 import yaml
 from langchain_core.messages import AIMessage, BaseMessage, HumanMessage
-from langgraph.checkpoint.sqlite import SqliteSaver
+from langgraph.checkpoint.sqlite.aio import AsyncSqliteSaver
 from langgraph.graph import END, START, StateGraph
 from langgraph.prebuilt import ToolNode
 
@@ -39,7 +39,7 @@ def _should_continue_coder(state: KyberState) -> str:
     return END
 
 
-def build_graph(config: dict | None = None):
+async def build_graph(config: dict | None = None):
     """Build and compile the Kyber Command LangGraph."""
     config = config or load_config()
 
@@ -108,15 +108,16 @@ def build_graph(config: dict | None = None):
     builder.add_edge("researcher", END)
     builder.add_edge("coder", END)
 
-    # Persistence: SqliteSaver -> state.db (connection stays open for app lifetime)
+    # Persistence: AsyncSqliteSaver -> state.db
     sqlite_path = persistence.get("sqlite_path", "state.db")
-    conn = sqlite3.connect(sqlite_path, check_same_thread=False)
-    checkpointer = SqliteSaver(conn)
-
+    # Create checkpointer - it will be initialized when first used
+    checkpointer_cm = AsyncSqliteSaver.from_conn_string(sqlite_path)
+    checkpointer = await checkpointer_cm.__aenter__()
+    
     graph = builder.compile(checkpointer=checkpointer)
     return graph
 
 
-def get_graph():
+async def get_graph():
     """Get the compiled graph (singleton-style for app)."""
-    return build_graph()
+    return await build_graph()
